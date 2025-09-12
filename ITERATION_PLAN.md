@@ -66,12 +66,13 @@ aplay test_response.wav 2>/dev/null || echo "Audio generated, playback not avail
 # ITERATION 2: Fix Web-to-Service Communication
 **Goal**: Enable browser to communicate with backend services
 **Time**: 1 hour
+**Actual Time**: 45 minutes
 
 ## Tasks:
-1. [ ] Fix CORS issues between browser and services
-2. [ ] Implement proper audio format conversion (WebM to WAV)
-3. [ ] Create simple test button for STT
-4. [ ] Add response display in UI
+1. [x] Fix CORS issues between browser and services ✅
+2. [x] Implement proper audio format conversion (WebM to WAV) ✅
+3. [x] Create simple test button for STT ✅
+4. [x] Add response display in UI ✅
 
 ## Technical Considerations:
 - Browser records in WebM/Opus format
