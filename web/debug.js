@@ -150,6 +150,7 @@ class DebugDashboard {
         document.getElementById('start-recording').addEventListener('click', () => this.startRecording());
         document.getElementById('stop-recording').addEventListener('click', () => this.stopRecording());
         document.getElementById('play-recorded').addEventListener('click', () => this.playRecorded());
+        document.getElementById('download-recorded').addEventListener('click', () => this.downloadRecorded());
         
         // STT controls
         document.getElementById('test-stt-current').addEventListener('click', () => this.testSTTCurrent());
@@ -208,6 +209,37 @@ class DebugDashboard {
             
             this.mediaRecorder = new MediaRecorder(this.stream, { mimeType });
             
+            // Monitor audio levels
+            const analyser = this.audioContext.createAnalyser();
+            const source = this.audioContext.createMediaStreamSource(this.stream);
+            source.connect(analyser);
+            analyser.fftSize = 256;
+            
+            const bufferLength = analyser.frequencyBinCount;
+            const dataArray = new Uint8Array(bufferLength);
+            let maxLevel = 0;
+            let silenceCount = 0;
+            
+            const checkAudioLevel = setInterval(() => {
+                if (!this.isRecording) {
+                    clearInterval(checkAudioLevel);
+                    return;
+                }
+                analyser.getByteFrequencyData(dataArray);
+                const avgLevel = dataArray.reduce((a, b) => a + b) / bufferLength;
+                maxLevel = Math.max(maxLevel, avgLevel);
+                
+                if (avgLevel < 1) {
+                    silenceCount++;
+                    if (silenceCount > 10) {
+                        this.log('Audio', '⚠️ Warning: No audio detected - check microphone', 'warning');
+                    }
+                } else {
+                    silenceCount = 0;
+                    this.log('Audio', `📊 Audio level: ${avgLevel.toFixed(1)} (max: ${maxLevel.toFixed(1)})`, 'info');
+                }
+            }, 100);
+            
             this.mediaRecorder.ondataavailable = (e) => {
                 if (e.data.size > 0) {
                     chunks.push(e.data);
@@ -216,18 +248,29 @@ class DebugDashboard {
                 }
             };
             
-            this.mediaRecorder.onstop = () => {
+            this.mediaRecorder.onstop = async () => {
                 this.recordedBlob = new Blob(chunks, { type: mimeType });
                 this.log('Audio', `✅ Recording complete - Size: ${(this.recordedBlob.size / 1024).toFixed(1)} KB`, 'success');
+                
+                // Analyze the audio to detect if it's silent
+                if (maxLevel < 1) {
+                    this.log('Audio', '❌ WARNING: Recording appears to be silent!', 'error');
+                    this.log('Audio', '💡 Check: 1) Microphone permissions, 2) Correct input device selected, 3) Speak louder', 'warning');
+                } else {
+                    this.log('Audio', `✅ Audio captured successfully - Max level: ${maxLevel.toFixed(1)}`, 'success');
+                }
                 
                 // Update audio data display
                 document.getElementById('audio-data').textContent = JSON.stringify({
                     type: this.recordedBlob.type,
                     size: this.recordedBlob.size,
-                    duration: ((Date.now() - this.recordingStartTime) / 1000).toFixed(1) + 's'
+                    duration: ((Date.now() - this.recordingStartTime) / 1000).toFixed(1) + 's',
+                    maxAudioLevel: maxLevel.toFixed(1),
+                    likelySilent: maxLevel < 1
                 }, null, 2);
                 
                 document.getElementById('play-recorded').disabled = false;
+                document.getElementById('download-recorded').disabled = false;
                 document.getElementById('stop-recording').disabled = true;
                 document.getElementById('recording-indicator').classList.remove('active');
                 
@@ -282,6 +325,23 @@ class DebugDashboard {
         const audio = new Audio(URL.createObjectURL(this.recordedBlob));
         audio.play();
         this.log('Audio', '▶️ Playing recorded audio');
+    }
+    
+    downloadRecorded() {
+        if (!this.recordedBlob) {
+            this.log('Audio', '⚠️ No recording available to download', 'warning');
+            return;
+        }
+        
+        const url = URL.createObjectURL(this.recordedBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `recording_${new Date().getTime()}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        this.log('Audio', '💾 Downloaded recording as WebM file', 'success');
     }
     
     async testSTTCurrent() {

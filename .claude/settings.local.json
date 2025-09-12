@@ -40,7 +40,8 @@
       "Bash(docker compose:*)",
       "Bash(curl:*)",
       "Bash(docker exec:*)",
-      "Bash(docker cp:*)"
+      "Bash(docker cp:*)",
+      "Bash(ffmpeg:*)"
     ],
     "defaultMode": "acceptEdits"
   }

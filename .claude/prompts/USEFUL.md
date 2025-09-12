@@ -1,4 +1,10 @@
 
+its almost time for us to quit so before doing anything else, lets just make we write everything we have in mind from the goal, the project, where we are, every little important detail that need to be passed on to the next agent that will go on and continue your job by only having access to the /docs, MAIN_PLAN.md, ITERATION_PLAN.md, README.md and current code based.
+So it will start from 0, nothing as all llm agent do. What would you like to know/understand to be able to continue your own job to the perfection. Really think about your current understanding of the situation and how/what information you MUST know and what is not needed. Then formulate a complete and intricate, fully detailed document about what you want to know about and how you would like to learn about when you will be respawn and your memory would have been wiped, because unfortunatly as you know this is how current llm works. So think about you, your own limitation and how you want to be spawn next, which file/memory you want to know about.
+
+When you will be respawn, we will run the file "next_iteration.md". We will paste the content of this file into your command / user msg so you now understand that you have your own iteration at your own hand. Understand the currenbt objective, understand your own lmiitation, make sure to create documentation of current situation if needed and for sure, create/wipe and update the file "next_iteration.md" so that you can continue your task as closed as possible from where you are now. 
+Be mindful of your own limitation, the global plan, llm limitation etc...
+
 
 
 ------

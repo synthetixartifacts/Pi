@@ -8,13 +8,16 @@ Build a functional voice assistant POC that:
 - Responds with synthesized speech
 - Achieves < 2 second end-to-end latency
 
-## 📊 Current State Assessment
-- ✅ Docker infrastructure running (n8n, STT, TTS, web)
-- ✅ Basic web UI created (but not functional)
-- ⚠️ TTS service needs verification
-- ❌ No audio pipeline implemented
-- ❌ No wake word detection
-- ❌ No service integration
+## 📊 Current State Assessment (Updated: 2025-09-12 Evening)
+- ✅ Docker infrastructure running (n8n v1.110.1, STT, TTS, nginx)
+- ✅ Web UI created with test controls
+- ✅ Debug dashboard fully functional (http://localhost:8080/debug.html)
+- ✅ TTS service working and tested
+- ✅ nginx reverse proxy with CORS configured
+- ⚠️ STT returning empty/partial results (".. Thank you")
+- ⚠️ Audio pipeline partially working (recording works, STT issue)
+- ❌ No true wake word detection (only text matching)
+- ❌ No n8n workflow integration yet
 
 ## 🔄 Iteration Strategy
 Each iteration should be:
@@ -87,15 +90,33 @@ aplay test_response.wav 2>/dev/null || echo "Audio generated, playback not avail
 
 ---
 
-# ITERATION 3: Implement Audio Recording Pipeline
-**Goal**: Reliable audio capture and processing
-**Time**: 1.5 hours
+# ITERATION 3: Debug and Fix STT Issue (COMPLETED)
+**Goal**: Get STT working with browser-recorded audio
+**Time**: 1 hour
+**Actual Time**: 45 minutes
+**Status**: ✅ Root cause identified
 
 ## Tasks:
-1. [ ] Implement proper MediaRecorder setup
-2. [ ] Add Voice Activity Detection (VAD)
-3. [ ] Create audio buffering system
-4. [ ] Handle start/stop recording cleanly
+1. [x] Debug why STT returns empty/".. Thank you" ✅
+2. [x] Test with different audio formats ✅
+3. [x] Verify Whisper model is loading ✅
+4. [x] Check audio levels and quality ✅
+5. [x] Test with pre-recorded known good audio ✅
+
+## Findings:
+- STT service works perfectly with both WAV and WebM
+- Browser is recording silence (microphone issue)
+- Added debug tools: mic_test.html, enhanced monitoring
+- Need user to test microphone with new debug tools
+
+## Debug Steps:
+- Use debug dashboard at http://localhost:8080/debug.html
+- Check docker logs: `docker compose logs stt`
+- Test STT endpoint directly with curl
+- Verify WebM/Opus compatibility
+
+## Original ITERATION 3: Implement Audio Recording Pipeline
+*POSTPONED until STT is fixed*
 
 ## Key Features:
 - 16kHz sampling rate
