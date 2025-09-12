@@ -1,0 +1,43 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm run package:all:*)",
+      "Bash(npm install)",
+      "Bash(npm run package:win:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(grep:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npm install:*)",
+      "Bash(mv:*)",
+      "Bash(npm run test:coverage:*)",
+      "Bash(timeout 5s npm run test:ui -- app/__tests__/basic.test.ts --reporter=verbose)",
+      "Bash(true)",
+      "Bash(npm run test:run:*)",
+      "Bash(npm run test:main:*)",
+      "Bash(npm run test:renderer:*)",
+      "Bash(npm run test:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run dev:*)",
+      "WebSearch",
+      "Bash(npx vitest run:*)",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:www.anthropic.com)",
+      "Bash(find:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm --workspace @gcomputer/db run drizzle:generate)",
+      "Bash(npm --workspace @gcomputer/db run drizzle:studio)",
+      "Bash(sed:*)",
+      "Bash(npm search:*)",
+      "WebFetch(domain:www.anthropic.com)",
+      "WebFetch(domain:dev.to)",
+      "WebSearch",
+      "WebSearch",
+      "WebSearch",
+      "WebSearch",
+      "WebSearch"
+    ],
+    "defaultMode": "acceptEdits"
+  }
+}

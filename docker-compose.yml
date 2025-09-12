@@ -1,0 +1,130 @@
+version: '3.8'
+
+x-common-variables: &common-variables
+  TZ: ${GENERIC_TIMEZONE:-America/Toronto}
+  
+x-resource-limits: &resource-limits
+  deploy:
+    resources:
+      limits:
+        cpus: ${CPU_LIMIT:-4}
+        memory: ${MEMORY_LIMIT:-4g}
+
+services:
+  n8n:
+    image: n8nio/n8n:1.23.0
+    container_name: pi-n8n
+    restart: unless-stopped
+    ports:
+      - "${N8N_PORT:-5678}:5678"
+    environment:
+      <<: *common-variables
+      N8N_BASIC_AUTH_ACTIVE: "true"
+      N8N_BASIC_AUTH_USER: ${N8N_BASIC_AUTH_USER:-admin}
+      N8N_BASIC_AUTH_PASSWORD: ${N8N_BASIC_AUTH_PASSWORD:-changeme123}
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-n8n-encryption-key-min-24-chars}
+      N8N_HOST: 0.0.0.0
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      DB_TYPE: sqlite
+      N8N_DEFAULT_BINARY_DATA_MODE: filesystem
+      EXECUTIONS_DATA_SAVE_ON_ERROR: all
+      EXECUTIONS_DATA_SAVE_ON_SUCCESS: all
+      EXECUTIONS_DATA_SAVE_ON_PROGRESS: true
+      EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS: true
+    volumes:
+      - n8n_data:/home/node/.n8n
+      - ./services/n8n/files:/files
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    <<: *resource-limits
+    networks:
+      - pi-network
+
+  stt:
+    image: fedirz/faster-whisper-server:latest-cpu
+    container_name: pi-stt
+    restart: unless-stopped
+    ports:
+      - "${STT_PORT:-8000}:8000"
+    environment:
+      <<: *common-variables
+      WHISPER__MODEL: Systran/faster-whisper-${WHISPER_MODEL:-small.en}
+      WHISPER__INFERENCE_DEVICE: ${WHISPER_DEVICE:-cpu}
+      WHISPER__COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      UVICORN_HOST: 0.0.0.0
+      UVICORN_PORT: 8000
+    volumes:
+      - stt_models:/root/.cache/huggingface
+      - ./services/stt/config:/config:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    <<: *resource-limits
+    networks:
+      - pi-network
+
+  tts:
+    build:
+      context: ./services/tts
+      dockerfile: Dockerfile
+    container_name: pi-tts
+    restart: unless-stopped
+    ports:
+      - "${TTS_PORT:-5000}:5000"
+    environment:
+      <<: *common-variables
+      PIPER_VOICE: ${PIPER_VOICE:-en_US-amy-medium}
+      PIPER_SPEAKER: ${PIPER_SPEAKER:-0}
+    volumes:
+      - tts_models:/app/models
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    <<: *resource-limits
+    networks:
+      - pi-network
+
+  web:
+    image: nginx:alpine
+    container_name: pi-web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      - n8n
+      - stt
+      - tts
+    networks:
+      - pi-network
+
+volumes:
+  n8n_data:
+    driver: local
+  stt_models:
+    driver: local
+  tts_models:
+    driver: local
+
+networks:
+  pi-network:
+    driver: bridge
+    name: pi-network
