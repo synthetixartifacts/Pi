@@ -41,7 +41,8 @@
       "Bash(curl:*)",
       "Bash(docker exec:*)",
       "Bash(docker cp:*)",
-      "Bash(ffmpeg:*)"
+      "Bash(ffmpeg:*)",
+      "Bash(tree:*)"
     ],
     "defaultMode": "acceptEdits"
   }

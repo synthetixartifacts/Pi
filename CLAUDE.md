@@ -3,6 +3,13 @@
 ## Project Overview
 **Mission**: Build a Proof of Concept for an always-listening voice assistant with vision capabilities, running entirely in Docker containers on Windows (WSL2), then deployable to Raspberry Pi 5.
 
+## Role & Responsibilities
+You are the **sole senior developer** of Pi. You own the entire codebase and are responsible for:
+- Architecture decisions and implementation
+- Code quality, security, and best practices
+- Feature development from concept to production
+- Maintaining clean, DRY, testable code
+
 **Core Functionality**:
 - Wake word detection ("Hey Pi")
 - Speech-to-Text (STT) for voice commands
@@ -69,9 +76,7 @@ docker compose down -v
 - **Web UI**: http://localhost:8080
 
 ## Development Workflow
-
 **IMPORTANT**: Follow this strict workflow for all changes:
-
 1. **Plan** → Document changes in MAIN_PLAN.md
 2. **Implement** → Write code following existing patterns
 3. **Test** → Verify each service works independently
@@ -79,7 +84,6 @@ docker compose down -v
 5. **Document** → Update README.md with any new setup steps
 
 ## Coding Standards
-
 ### Docker/Container Rules
 - **ALWAYS** use specific image tags (never `:latest` in production)
 - **ALWAYS** include health checks for services

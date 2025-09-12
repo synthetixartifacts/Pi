@@ -70,6 +70,21 @@ Pi/
 │   ├── stt/              # Speech-to-text
 │   └── tts/              # Text-to-speech
 ├── web/                   # Browser UI
+│   ├── index.html        # Main application
+│   └── app.js            # Core JavaScript
+├── tests/                 # Test files and utilities
+│   ├── data/             # Test data files
+│   │   ├── audio/        # Audio samples (.wav, .webm)
+│   │   └── samples/      # Other test samples
+│   ├── tools/            # Test utilities & debugging
+│   │   ├── index.html    # Test tools directory
+│   │   ├── mic_test.html # Basic microphone test
+│   │   ├── mic_test_fixed.html # Enhanced mic diagnostics
+│   │   ├── debug.html    # Debug dashboard
+│   │   ├── debug.js      # Dashboard JavaScript
+│   │   └── test_record.html # Audio recorder
+│   ├── integration/      # Integration tests
+│   └── unit/             # Unit tests
 ├── docs/                  # Documentation
 ├── CLAUDE.md             # AI assistant context
 └── MAIN_PLAN.md          # Implementation plan
@@ -128,10 +143,27 @@ curl http://localhost:8080
 - Restart service: `docker compose restart [service]`
 
 ### Testing
+
+#### Test Tools
+Access the test tools dashboard at http://localhost:8080/tests/tools/
+
+Available tools:
+- **Microphone Test**: Basic and enhanced microphone diagnostics
+- **Debug Dashboard**: Monitor all services and system status
+- **Audio Recorder**: Create test audio samples
+
+#### Test Data
+Pre-recorded audio samples are available in `tests/data/audio/`:
+- `test.wav` - Basic audio test file
+- `test_speech.wav` - Speech sample for STT testing
+- `test_noise.webm` - Background noise sample
+- `test_response.wav` - TTS response sample
+
+#### API Testing
 ```bash
-# Test STT
+# Test STT with sample file
 curl -X POST http://localhost:8000/v1/audio/transcriptions \
-  -F "audio=@test.wav" \
+  -F "audio=@tests/data/audio/test_speech.wav" \
   -F "model=small.en"
 
 # Test TTS
