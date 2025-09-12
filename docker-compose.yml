@@ -1,5 +1,3 @@
-version: '3.8'
-
 x-common-variables: &common-variables
   TZ: ${GENERIC_TIMEZONE:-America/Toronto}
   
@@ -12,7 +10,7 @@ x-resource-limits: &resource-limits
 
 services:
   n8n:
-    image: n8nio/n8n:1.23.0
+    image: n8nio/n8n:1.110.1
     container_name: pi-n8n
     restart: unless-stopped
     ports:
@@ -96,7 +94,7 @@ services:
       - pi-network
 
   web:
-    image: nginx:alpine
+    image: nginx:1.25-alpine
     container_name: pi-web
     restart: unless-stopped
     ports:

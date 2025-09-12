@@ -1,5 +1,8 @@
 
 
+Everything is ready 
+
+
 # Context
 This is the complete start of our project, nothing has been done yet and everything is to be setup.
 

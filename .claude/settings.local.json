@@ -36,7 +36,9 @@
       "WebSearch",
       "WebSearch",
       "WebSearch",
-      "WebSearch"
+      "WebSearch",
+      "Bash(docker compose:*)",
+      "Bash(curl:*)"
     ],
     "defaultMode": "acceptEdits"
   }

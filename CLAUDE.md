@@ -14,11 +14,12 @@
 ## Technology Stack
 - **Container Platform**: Docker (Docker Desktop on Windows/WSL2)
 - **Orchestration**: Docker Compose 
-- **Workflow Engine**: n8n (latest)
-- **STT**: Whisper (via faster-whisper-server)
+- **Workflow Engine**: n8n v1.110.1 (latest as of Jan 2025)
+- **STT**: Whisper (via faster-whisper-server v0.7.0)
 - **TTS**: Piper (neural text-to-speech)
 - **Wake Word**: Porcupine or openWakeWord
 - **Vision**: YOLO/OpenCV (optional)
+- **Web Server**: nginx 1.25-alpine
 - **Languages**: Python 3.11+, JavaScript/Node.js
 - **Target Platform**: Windows (POC) → Raspberry Pi 5 (Production)
 

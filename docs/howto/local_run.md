@@ -90,6 +90,11 @@ docker system prune -a
 docker compose pull
 docker compose up -d
 
+### Update n8n to Latest Version (v1.110.1 as of Jan 2025)
+docker compose down n8n
+docker compose pull n8n
+docker compose up -d n8n
+
 ### Backup n8n Data
 docker run --rm -v pi_n8n_data:/data -v $(pwd):/backup alpine tar czf /backup/n8n_backup.tar.gz -C /data .
 
