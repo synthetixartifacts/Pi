@@ -1,6 +1,26 @@
 
 
-Everything is ready 
+Everything is ready and looking fine. 
+So lets go on and start our main plan toward our app. 
+Do not forget our goal and our main concept. 
+
+Still keep in mind that
+- We need to always follow best practice in term of coding like DRY, reusable component and make everything clean, not too complex and perflecty balanced
+
+Again do not hesitate in the middle of the execution based on your finding to challenge and revisit the inital plan and redo a planning phase, it is important that your plan go along you coding execution and your discovery.
+We are in 2025, this project need to be up to date with current library. Do not forget that your training dataset is limited and you have a cutting date so make sure to use the browsing tools to double check your assumptions.
+
+As now you know you can run cli command yourself. 
+
+Lets go and iterate for the first step. Do not try to be overconfident and complete the whole project at once.
+Really go on a validate everything and based on the ending of each iteration dont hesite to question your plan, add step or whatever depending on your findings.
+
+Based on that, lets first start by questionning if for the next step we where not too ambitious and our plan details if it has enough step based on our project.
+If the plan is too small for the project, re-analyze, re-validate, re-browse and create a more in depth, iteration based plan.
+
+
+
+
 
 
 # Context
