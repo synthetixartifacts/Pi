@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Microphone Test</title>
+    <style>
+        body { font-family: monospace; background: #000; color: #0f0; padding: 20px; }
+        button { margin: 10px; padding: 10px; }
+        #meter { width: 300px; height: 30px; background: #333; margin: 20px 0; }
+        #level { height: 100%; background: linear-gradient(to right, #0f0, #ff0, #f00); width: 0%; }
+        pre { background: #111; padding: 10px; border: 1px solid #333; }
+    </style>
+</head>
+<body>
+    <h1>Microphone Test</h1>
+    <button id="start">Start Microphone Test</button>
+    <button id="stop" disabled>Stop</button>
+    
+    <div id="meter"><div id="level"></div></div>
+    
+    <pre id="info">Click "Start Microphone Test" to begin...</pre>
+    
+    <h2>Instructions:</h2>
+    <ol>
+        <li>Click "Start Microphone Test"</li>
+        <li>Allow microphone access when prompted</li>
+        <li>Speak into your microphone</li>
+        <li>You should see the green bar move when you speak</li>
+        <li>If the bar doesn't move, check your microphone settings</li>
+    </ol>
+
+    <script>
+        let stream;
+        let audioContext;
+        let analyser;
+        let dataArray;
+        let animationId;
+        
+        document.getElementById('start').onclick = async () => {
+            try {
+                // Request microphone with various constraints
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                        sampleRate: 16000
+                    } 
+                });
+                
+                // Get actual settings
+                const track = stream.getAudioTracks()[0];
+                const settings = track.getSettings();
+                const capabilities = track.getCapabilities ? track.getCapabilities() : {};
+                
+                document.getElementById('info').textContent = `Microphone Active!\n
+Settings:
+- Sample Rate: ${settings.sampleRate || 'default'} Hz
+- Echo Cancellation: ${settings.echoCancellation}
+- Noise Suppression: ${settings.noiseSuppression}
+- Auto Gain Control: ${settings.autoGainControl}
+- Channel Count: ${settings.channelCount || 'default'}
+- Device ID: ${settings.deviceId}
+- Group ID: ${settings.groupId}
+
+Capabilities:
+- Sample Rate Range: ${capabilities.sampleRate ? `${capabilities.sampleRate.min}-${capabilities.sampleRate.max}` : 'N/A'}
+- Echo Cancellation: ${capabilities.echoCancellation}
+- Noise Suppression: ${capabilities.noiseSuppression}
+
+Speak into your microphone to see the level meter move!`;
+                
+                // Setup audio analysis
+                audioContext = new AudioContext();
+                analyser = audioContext.createAnalyser();
+                const source = audioContext.createMediaStreamSource(stream);
+                source.connect(analyser);
+                
+                analyser.fftSize = 256;
+                const bufferLength = analyser.frequencyBinCount;
+                dataArray = new Uint8Array(bufferLength);
+                
+                // Start visualization
+                visualize();
+                
+                document.getElementById('start').disabled = true;
+                document.getElementById('stop').disabled = false;
+                
+            } catch (err) {
+                document.getElementById('info').textContent = `Error: ${err.message}\n\n${err.stack}`;
+            }
+        };
+        
+        document.getElementById('stop').onclick = () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+            document.getElementById('level').style.width = '0%';
+            document.getElementById('info').textContent = 'Microphone stopped.';
+            document.getElementById('start').disabled = false;
+            document.getElementById('stop').disabled = true;
+        };
+        
+        function visualize() {
+            analyser.getByteFrequencyData(dataArray);
+            
+            // Calculate average volume
+            let sum = 0;
+            for (let i = 0; i < bufferLength; i++) {
+                sum += dataArray[i];
+            }
+            const average = sum / bufferLength;
+            
+            // Update meter (scale to percentage)
+            const percentage = (average / 255) * 100;
+            document.getElementById('level').style.width = percentage + '%';
+            
+            // Continue animation
+            animationId = requestAnimationFrame(visualize);
+        }
+    </script>
+</body>
+</html>

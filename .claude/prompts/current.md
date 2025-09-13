@@ -1,4 +1,9 @@
 
+docs\HANDOVER.md
+ITERATION_PLAN.md
+MAIN_PLAN.md
+next_iteration.md
+
 
 Everything is ready and looking fine. 
 So lets go on and start our main plan toward our app. 
