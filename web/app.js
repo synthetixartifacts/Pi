@@ -1,480 +1,718 @@
-class VoiceAssistant {
+// Debug Dashboard - Modular Architecture for Pi Voice Assistant
+class DebugDashboard {
     constructor() {
-        this.isListening = false;
+        this.modules = new Map();
+        this.currentModule = 'overview';
+        this.services = {
+            stt: null,
+            tts: null,
+            n8n: null
+        };
+
+        // Global access to core functionalities
+        window.piCore = new PiCore();
+
+        this.initializeDashboard();
+        this.registerModules();
+        this.checkServiceHealth();
+    }
+
+    initializeDashboard() {
+        // Navigation handling
+        document.querySelectorAll('.feature-nav button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const moduleId = e.target.dataset.module;
+                this.switchModule(moduleId);
+            });
+        });
+
+        this.log('info', 'Dashboard initialized');
+    }
+
+    registerModules() {
+        // Register all feature modules
+        this.registerModule('overview', new OverviewModule());
+        this.registerModule('tts', new TTSModule());
+        this.registerModule('stt', new STTModule());
+        this.registerModule('pipeline', new PipelineModule());
+        this.registerModule('system', new SystemModule());
+
+        this.log('success', `Registered ${this.modules.size} feature modules`);
+    }
+
+    registerModule(id, moduleInstance) {
+        moduleInstance.dashboard = this;
+        this.modules.set(id, moduleInstance);
+        moduleInstance.initialize();
+    }
+
+    switchModule(moduleId) {
+        // Update navigation
+        document.querySelectorAll('.feature-nav button').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`[data-module="${moduleId}"]`).classList.add('active');
+
+        // Update content
+        document.querySelectorAll('.feature-module').forEach(module => {
+            module.classList.remove('active');
+        });
+        document.getElementById(`${moduleId}-module`).classList.add('active');
+
+        this.currentModule = moduleId;
+
+        // Activate the module
+        const module = this.modules.get(moduleId);
+        if (module && module.activate) {
+            module.activate();
+        }
+
+        this.log('info', `Switched to ${moduleId} module`);
+    }
+
+    async checkServiceHealth() {
+        const statusElements = {
+            stt: document.getElementById('sttStatus'),
+            tts: document.getElementById('ttsStatus'),
+            n8n: document.getElementById('n8nStatus')
+        };
+
+        // Check STT
+        try {
+            const sttResponse = await fetch('/api/stt/health', {
+                method: 'GET',
+                timeout: 5000
+            });
+            if (sttResponse.ok) {
+                statusElements.stt.textContent = 'STT Online';
+                statusElements.stt.className = 'status-badge status-connected';
+                this.services.stt = 'connected';
+            } else {
+                throw new Error(`HTTP ${sttResponse.status}`);
+            }
+        } catch (error) {
+            statusElements.stt.textContent = 'STT Offline';
+            statusElements.stt.className = 'status-badge status-disconnected';
+            this.services.stt = 'disconnected';
+            this.log('error', `STT service: ${error.message}`);
+        }
+
+        // Check TTS
+        try {
+            const ttsResponse = await fetch('/api/tts/health', {
+                method: 'GET',
+                timeout: 5000
+            });
+            const ttsData = await ttsResponse.json();
+            if (ttsData.status === 'healthy') {
+                statusElements.tts.textContent = 'TTS Online';
+                statusElements.tts.className = 'status-badge status-connected';
+                this.services.tts = 'connected';
+            } else {
+                throw new Error('Service unhealthy');
+            }
+        } catch (error) {
+            statusElements.tts.textContent = 'TTS Offline';
+            statusElements.tts.className = 'status-badge status-disconnected';
+            this.services.tts = 'disconnected';
+            this.log('error', `TTS service: ${error.message}`);
+        }
+
+        // Check n8n
+        try {
+            const n8nResponse = await fetch('/api/n8n/healthz', {
+                method: 'GET',
+                timeout: 5000
+            });
+            const n8nData = await n8nResponse.json();
+            if (n8nData.status === 'ok') {
+                statusElements.n8n.textContent = 'n8n Online';
+                statusElements.n8n.className = 'status-badge status-connected';
+                this.services.n8n = 'connected';
+            } else {
+                throw new Error('Service unhealthy');
+            }
+        } catch (error) {
+            statusElements.n8n.textContent = 'n8n Offline';
+            statusElements.n8n.className = 'status-badge status-disconnected';
+            this.services.n8n = 'disconnected';
+            this.log('error', `n8n service: ${error.message}`);
+        }
+    }
+
+    log(level, message) {
+        const logsContainer = document.getElementById('debugLogs');
+        const timestamp = new Date().toLocaleTimeString();
+        const logEntry = document.createElement('div');
+        logEntry.className = `log-entry log-${level}`;
+
+        const icons = {
+            error: '❌',
+            success: '✅',
+            warning: '⚠️',
+            info: '📝'
+        };
+
+        logEntry.textContent = `[${timestamp}] ${icons[level] || '📝'} ${message}`;
+        logsContainer.insertBefore(logEntry, logsContainer.firstChild);
+
+        // Keep log size manageable
+        const entries = logsContainer.children;
+        if (entries.length > 100) {
+            logsContainer.removeChild(entries[entries.length - 1]);
+        }
+    }
+
+    clearLogs() {
+        document.getElementById('debugLogs').innerHTML = '';
+        this.log('info', 'Logs cleared');
+    }
+}
+
+// Core Pi functionality - globally accessible
+class PiCore {
+    constructor() {
         this.audioContext = null;
         this.mediaRecorder = null;
         this.stream = null;
-        this.audioChunks = [];
-        this.initializeUI();
-        this.testServices();
+        this.isRecording = false;
     }
-    
-    initializeUI() {
-        this.startBtn = document.getElementById('startBtn');
-        this.stopBtn = document.getElementById('stopBtn');
-        this.status = document.getElementById('status');
-        this.log = document.getElementById('log');
-        this.transcript = document.getElementById('transcript');
-        this.sensitivity = document.getElementById('sensitivity');
-        this.sensitivityValue = document.getElementById('sensitivityValue');
-        
-        this.startBtn.addEventListener('click', () => this.start());
-        this.stopBtn.addEventListener('click', () => this.stop());
-        this.sensitivity.addEventListener('input', (e) => {
-            this.sensitivityValue.textContent = e.target.value;
-        });
-        
-        // Add test buttons
-        this.addTestButtons();
-        
-        this.addLog('Voice Assistant initialized');
-    }
-    
-    addTestButtons() {
-        // Create test panel
-        const testPanel = document.createElement('div');
-        testPanel.style.cssText = 'background: #e5e7eb; padding: 15px; border-radius: 10px; margin: 20px 0;';
-        testPanel.innerHTML = `
-            <h3>Test Controls</h3>
-            <div style="display: flex; gap: 10px; margin: 10px 0;">
-                <button id="testRecordBtn" style="padding: 10px; background: #3b82f6; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                    Test Record (3s)
-                </button>
-                <button id="testTTSBtn" style="padding: 10px; background: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                    Test TTS
-                </button>
-                <button id="testPipelineBtn" style="padding: 10px; background: #8b5cf6; color: white; border: none; border-radius: 5px; cursor: pointer;">
-                    Test Full Pipeline
-                </button>
-            </div>
-        `;
-        
-        // Insert after control panel
-        const controlPanel = document.querySelector('.control-panel');
-        controlPanel.parentNode.insertBefore(testPanel, controlPanel.nextSibling);
-        
-        // Add event listeners
-        document.getElementById('testRecordBtn').addEventListener('click', () => this.testRecording());
-        document.getElementById('testTTSBtn').addEventListener('click', () => this.testTTS());
-        document.getElementById('testPipelineBtn').addEventListener('click', () => this.testFullPipeline());
-    }
-    
-    async testServices() {
-        this.addLog('Testing service connectivity...');
-        
-        // Test STT health
-        try {
-            const sttResponse = await fetch('/api/stt/health');
-            if (sttResponse.ok) {
-                this.addLog('✓ STT service connected');
-            } else {
-                this.addLog('✗ STT service error: ' + sttResponse.status);
-            }
-        } catch (error) {
-            this.addLog('✗ STT service unreachable: ' + error.message);
-        }
-        
-        // Test TTS health
-        try {
-            const ttsResponse = await fetch('/api/tts/health');
-            const ttsData = await ttsResponse.json();
-            if (ttsData.status === 'healthy') {
-                this.addLog('✓ TTS service connected');
-            } else {
-                this.addLog('✗ TTS service unhealthy');
-            }
-        } catch (error) {
-            this.addLog('✗ TTS service unreachable: ' + error.message);
-        }
-        
-        // Test n8n health
-        try {
-            const n8nResponse = await fetch('/api/n8n/healthz');
-            const n8nData = await n8nResponse.json();
-            if (n8nData.status === 'ok') {
-                this.addLog('✓ n8n service connected');
-            } else {
-                this.addLog('✗ n8n service unhealthy');
-            }
-        } catch (error) {
-            this.addLog('✗ n8n service unreachable: ' + error.message);
-        }
-    }
-    
-    async testRecording() {
-        this.addLog('Starting 3-second test recording...');
-        this.transcript.textContent = 'Recording for 3 seconds...';
-        
-        try {
-            // Get microphone access if not already
-            if (!this.stream) {
-                this.stream = await navigator.mediaDevices.getUserMedia({ 
-                    audio: {
-                        channelCount: 1,
-                        sampleRate: 16000,
-                        echoCancellation: true,
-                        noiseSuppression: true
-                    } 
-                });
-            }
-            
-            // Record for 3 seconds
-            const audioBlob = await this.recordAudio(3000);
-            this.addLog(`Recorded ${(audioBlob.size / 1024).toFixed(1)}KB of audio`);
-            
-            // Send to STT
-            this.transcript.textContent = 'Processing audio...';
-            const text = await this.sendToSTT(audioBlob);
-            
-            if (text) {
-                this.transcript.textContent = `Recognized: "${text}"`;
-                this.addLog(`STT Result: ${text}`);
-            } else {
-                this.transcript.textContent = 'No speech detected or empty response';
-                this.addLog('STT returned empty text');
-            }
-            
-        } catch (error) {
-            this.addLog(`Recording error: ${error.message}`, 'error');
-            this.transcript.textContent = `Error: ${error.message}`;
-        }
-    }
-    
-    async testTTS() {
-        const testText = "Hello! This is the Pi voice assistant. Text to speech is working correctly.";
-        this.addLog('Testing TTS...');
-        this.transcript.textContent = `Speaking: "${testText}"`;
-        
-        try {
-            const audioUrl = await this.textToSpeech(testText);
-            const audio = new Audio(audioUrl);
-            
-            audio.onended = () => {
-                this.addLog('TTS playback completed');
-                URL.revokeObjectURL(audioUrl);
-            };
-            
-            await audio.play();
-            this.addLog('TTS audio playing...');
-            
-        } catch (error) {
-            this.addLog(`TTS error: ${error.message}`, 'error');
-            this.transcript.textContent = `TTS Error: ${error.message}`;
-        }
-    }
-    
-    async testFullPipeline() {
-        this.addLog('Testing full pipeline: Record → STT → TTS');
-        
-        try {
-            // Step 1: Record
-            this.transcript.textContent = 'Step 1/3: Recording for 3 seconds...';
-            const audioBlob = await this.recordAudio(3000);
-            
-            // Step 2: STT
-            this.transcript.textContent = 'Step 2/3: Converting speech to text...';
-            const text = await this.sendToSTT(audioBlob);
-            
-            if (!text) {
-                throw new Error('No speech detected');
-            }
-            
-            this.addLog(`Recognized: "${text}"`);
-            
-            // Step 3: TTS
-            this.transcript.textContent = `Step 3/3: Speaking: "You said: ${text}"`;
-            const response = `You said: ${text}`;
-            const audioUrl = await this.textToSpeech(response);
-            
-            const audio = new Audio(audioUrl);
-            await audio.play();
-            
-            this.addLog('✓ Full pipeline test completed successfully!');
-            
-        } catch (error) {
-            this.addLog(`Pipeline error: ${error.message}`, 'error');
-            this.transcript.textContent = `Pipeline Error: ${error.message}`;
-        }
-    }
-    
-    async recordAudio(duration = 3000) {
-        return new Promise((resolve, reject) => {
-            if (!this.stream) {
-                reject(new Error('No microphone access'));
-                return;
-            }
-            
-            const chunks = [];
-            const mediaRecorder = new MediaRecorder(this.stream, {
-                mimeType: 'audio/webm;codecs=opus'
-            });
-            
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data.size > 0) {
-                    chunks.push(e.data);
-                }
-            };
-            
-            mediaRecorder.onstop = () => {
-                const blob = new Blob(chunks, { type: 'audio/webm;codecs=opus' });
-                resolve(blob);
-            };
-            
-            mediaRecorder.onerror = (e) => {
-                reject(new Error(`Recording error: ${e.error}`));
-            };
-            
-            mediaRecorder.start();
-            
-            setTimeout(() => {
-                if (mediaRecorder.state === 'recording') {
-                    mediaRecorder.stop();
-                }
-            }, duration);
-        });
-    }
-    
-    async sendToSTT(audioBlob) {
-        try {
-            // Convert WebM to WAV if needed (for now, send as-is)
-            const formData = new FormData();
-            formData.append('file', audioBlob, 'audio.webm');
-            formData.append('model', 'small.en');
-            
-            const response = await fetch('/api/stt/v1/audio/transcriptions', {
-                method: 'POST',
-                body: formData
-            });
-            
-            if (!response.ok) {
-                throw new Error(`STT error: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            return data.text || '';
-            
-        } catch (error) {
-            this.addLog(`STT Error: ${error.message}`, 'error');
-            throw error;
-        }
-    }
-    
-    async textToSpeech(text) {
-        try {
-            const response = await fetch('/api/tts/api/tts', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ text })
-            });
-            
-            if (!response.ok) {
-                throw new Error(`TTS error: ${response.status}`);
-            }
-            
-            const blob = await response.blob();
-            return URL.createObjectURL(blob);
-            
-        } catch (error) {
-            this.addLog(`TTS Error: ${error.message}`, 'error');
-            throw error;
-        }
-    }
-    
-    async start() {
-        try {
-            this.addLog('Requesting microphone access...');
-            this.stream = await navigator.mediaDevices.getUserMedia({ 
+
+    async getAudioStream() {
+        if (!this.stream) {
+            this.stream = await navigator.mediaDevices.getUserMedia({
                 audio: {
                     channelCount: 1,
                     sampleRate: 16000,
                     echoCancellation: true,
                     noiseSuppression: true
-                } 
-            });
-            
-            this.audioContext = new AudioContext({ sampleRate: 16000 });
-            this.setupAudioProcessing(this.stream);
-            
-            this.isListening = true;
-            this.updateStatus('Listening');
-            this.startBtn.disabled = true;
-            this.stopBtn.disabled = false;
-            
-            this.transcript.textContent = 'Ready! Use test buttons or wait for continuous recording...';
-            this.addLog('Voice assistant started - Microphone active');
-            
-            // Start continuous recording loop
-            this.startContinuousRecording();
-            
-        } catch (error) {
-            this.addLog(`Error: ${error.message}`, 'error');
-            this.transcript.textContent = `Error: ${error.message}`;
-        }
-    }
-    
-    async startContinuousRecording() {
-        while (this.isListening) {
-            try {
-                this.transcript.textContent = 'Listening... (Say something)';
-                const audioBlob = await this.recordAudio(4000);
-                
-                if (!this.isListening) break;
-                
-                this.transcript.textContent = 'Processing...';
-                const text = await this.sendToSTT(audioBlob);
-                
-                if (text && text.length > 0) {
-                    this.transcript.textContent = `Heard: "${text}"`;
-                    this.addLog(`Speech: ${text}`);
-                    
-                    // Check for wake word or process command
-                    if (text.toLowerCase().includes('hey pi') || text.toLowerCase().includes('okay pi')) {
-                        this.addLog('Wake word detected!');
-                        // Process command after wake word
-                        const command = text.toLowerCase().replace(/hey pi|okay pi/g, '').trim();
-                        if (command) {
-                            await this.processCommand(command);
-                        }
-                    }
                 }
-                
-                // Small pause between recordings
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
+            });
+        }
+        return this.stream;
+    }
+
+    async recordAudio(duration = 3000) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const stream = await this.getAudioStream();
+                const chunks = [];
+                const mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: 'audio/webm;codecs=opus'
+                });
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) chunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(chunks, { type: 'audio/webm;codecs=opus' });
+                    resolve(blob);
+                };
+
+                mediaRecorder.onerror = (e) => reject(new Error(`Recording error: ${e.error}`));
+
+                mediaRecorder.start();
+                this.isRecording = true;
+
+                setTimeout(() => {
+                    if (mediaRecorder.state === 'recording') {
+                        mediaRecorder.stop();
+                        this.isRecording = false;
+                    }
+                }, duration);
+
             } catch (error) {
-                this.addLog(`Recording loop error: ${error.message}`, 'error');
-                await new Promise(resolve => setTimeout(resolve, 2000));
+                reject(error);
             }
-        }
+        });
     }
-    
-    async processCommand(command) {
-        this.addLog(`Processing command: ${command}`);
-        
-        // Simple command processing for demo
-        let response = '';
-        
-        if (command.includes('hello') || command.includes('hi')) {
-            response = 'Hello! How can I help you today?';
-        } else if (command.includes('time')) {
-            const now = new Date();
-            response = `The time is ${now.toLocaleTimeString()}`;
-        } else if (command.includes('date')) {
-            const now = new Date();
-            response = `Today is ${now.toLocaleDateString()}`;
-        } else {
-            response = `You said: ${command}`;
+
+    async sendToSTT(audioBlob, model = 'small.en') {
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.webm');
+        formData.append('model', model);
+
+        const response = await fetch('/api/stt/v1/audio/transcriptions', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error(`STT error: ${response.status}`);
         }
-        
-        // Speak response
-        try {
-            const audioUrl = await this.textToSpeech(response);
-            const audio = new Audio(audioUrl);
-            await audio.play();
-            this.transcript.textContent = `Response: "${response}"`;
-        } catch (error) {
-            this.addLog(`Response error: ${error.message}`, 'error');
-        }
+
+        const data = await response.json();
+        return data.text || '';
     }
-    
-    stop() {
-        this.isListening = false;
-        this.updateStatus('Inactive');
-        
-        if (this.mediaRecorder && this.mediaRecorder.state === 'recording') {
-            this.mediaRecorder.stop();
+
+    async textToSpeech(text, options = {}) {
+        const response = await fetch('/api/tts/api/tts', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, ...options })
+        });
+
+        if (!response.ok) {
+            throw new Error(`TTS error: ${response.status}`);
         }
-        
-        if (this.stream) {
-            this.stream.getTracks().forEach(track => track.stop());
-            this.stream = null;
-        }
-        
-        if (this.audioContext) {
-            this.audioContext.close();
-            this.audioContext = null;
-        }
-        
-        this.startBtn.disabled = false;
-        this.stopBtn.disabled = true;
-        this.transcript.textContent = 'Voice assistant stopped.';
-        this.addLog('Voice assistant stopped');
+
+        const blob = await response.blob();
+        return URL.createObjectURL(blob);
     }
-    
-    updateStatus(status) {
-        this.status.textContent = status;
-        this.status.className = `status status-${status.toLowerCase()}`;
-    }
-    
-    addLog(message, type = 'info') {
-        const timestamp = new Date().toLocaleTimeString();
-        const prefix = type === 'error' ? '❌' : '📝';
-        const logEntry = `[${timestamp}] ${prefix} ${message}\n`;
-        this.log.textContent = logEntry + this.log.textContent;
-        
-        // Keep log size manageable
-        const lines = this.log.textContent.split('\n');
-        if (lines.length > 50) {
-            this.log.textContent = lines.slice(0, 50).join('\n');
-        }
-    }
-    
-    setupAudioProcessing(stream) {
-        const source = this.audioContext.createMediaStreamSource(stream);
-        const analyser = this.audioContext.createAnalyser();
-        source.connect(analyser);
-        this.visualizeAudio(analyser);
-    }
-    
-    visualizeAudio(analyser) {
-        const canvas = document.getElementById('waveform');
+
+    setupAudioVisualizer(canvasId, stream) {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas || !stream) return;
+
         const ctx = canvas.getContext('2d');
         canvas.width = canvas.offsetWidth;
         canvas.height = canvas.offsetHeight;
-        
+
+        const audioContext = new AudioContext();
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        source.connect(analyser);
+
         const bufferLength = analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
-        
+
         const draw = () => {
-            if (!this.isListening) return;
-            
+            if (!this.isRecording && this.stream) return;
+
             requestAnimationFrame(draw);
             analyser.getByteTimeDomainData(dataArray);
-            
-            ctx.fillStyle = 'rgb(26, 26, 26)';
+
+            ctx.fillStyle = '#111827';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
+
             ctx.lineWidth = 2;
-            ctx.strokeStyle = 'rgb(16, 185, 129)';
+            ctx.strokeStyle = '#10b981';
             ctx.beginPath();
-            
+
             const sliceWidth = canvas.width / bufferLength;
             let x = 0;
-            
+
             for (let i = 0; i < bufferLength; i++) {
                 const v = dataArray[i] / 128.0;
                 const y = v * canvas.height / 2;
-                
+
                 if (i === 0) {
                     ctx.moveTo(x, y);
                 } else {
                     ctx.lineTo(x, y);
                 }
-                
                 x += sliceWidth;
             }
-            
+
             ctx.lineTo(canvas.width, canvas.height / 2);
             ctx.stroke();
         };
-        
+
         draw();
+        return { audioContext, analyser };
     }
 }
 
-// Initialize on page load
+// Base Module Class
+class BaseModule {
+    constructor() {
+        this.dashboard = null;
+    }
+
+    initialize() {
+        // Override in subclasses
+    }
+
+    activate() {
+        // Override in subclasses
+    }
+
+    log(level, message) {
+        if (this.dashboard) {
+            this.dashboard.log(level, `[${this.constructor.name}] ${message}`);
+        }
+    }
+
+    updateOutput(moduleId, content) {
+        const output = document.getElementById(`${moduleId}Output`);
+        if (output) {
+            output.innerHTML = content;
+        }
+    }
+}
+
+// Overview Module
+class OverviewModule extends BaseModule {
+    initialize() {
+        document.getElementById('testAllBtn').addEventListener('click', () => this.testAllServices());
+        document.getElementById('healthCheckBtn').addEventListener('click', () => this.healthCheck());
+    }
+
+    async healthCheck() {
+        this.log('info', 'Running health check...');
+        await this.dashboard.checkServiceHealth();
+
+        const services = this.dashboard.services;
+        const results = Object.entries(services).map(([name, status]) => {
+            const icon = status === 'connected' ? '✅' : '❌';
+            const statusText = status === 'connected' ? 'Online' : 'Offline';
+            return `<div>${icon} ${name.toUpperCase()}: ${statusText}</div>`;
+        }).join('');
+
+        this.updateOutput('overview', `
+            <div style="color: #d1d5db;">
+                <h4>Service Status:</h4>
+                ${results}
+                <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #4b5563;">
+                    <em>Health check completed at ${new Date().toLocaleTimeString()}</em>
+                </div>
+            </div>
+        `);
+    }
+
+    async testAllServices() {
+        this.log('info', 'Testing all services...');
+        this.updateOutput('overview', '<div style="color: #f59e0b;">Running comprehensive tests...</div>');
+
+        // This would trigger tests across all modules
+        await this.dashboard.modules.get('tts')?.quickTest?.();
+        await this.dashboard.modules.get('stt')?.quickTest?.();
+        await this.dashboard.modules.get('pipeline')?.quickTest?.();
+    }
+}
+
+// TTS Module
+class TTSModule extends BaseModule {
+    initialize() {
+        document.getElementById('ttsTestBtn').addEventListener('click', () => this.quickTest());
+        document.getElementById('ttsCustomBtn').addEventListener('click', () => this.customTest());
+        document.getElementById('ttsVoicesBtn').addEventListener('click', () => this.listVoices());
+
+        // Settings handlers
+        document.getElementById('ttsSpeed').addEventListener('input', (e) => {
+            document.getElementById('ttsSpeedValue').textContent = e.target.value + 'x';
+        });
+    }
+
+    async quickTest() {
+        const testText = "Pi debug dashboard TTS test successful!";
+        this.log('info', 'Running TTS quick test');
+        this.updateOutput('tts', '<div style="color: #f59e0b;">Synthesizing speech...</div>');
+
+        try {
+            const audioUrl = await window.piCore.textToSpeech(testText);
+            const audio = new Audio(audioUrl);
+
+            audio.onended = () => {
+                URL.revokeObjectURL(audioUrl);
+                this.log('success', 'TTS test completed successfully');
+            };
+
+            await audio.play();
+
+            this.updateOutput('tts', `
+                <div style="color: #10b981;">
+                    ✅ TTS Test Successful<br>
+                    📝 Text: "${testText}"<br>
+                    🎵 Audio playing...
+                </div>
+            `);
+
+        } catch (error) {
+            this.log('error', `TTS test failed: ${error.message}`);
+            this.updateOutput('tts', `<div style="color: #ef4444;">❌ TTS Error: ${error.message}</div>`);
+        }
+    }
+
+    async customTest() {
+        const customText = document.getElementById('ttsCustomText').value;
+        if (!customText.trim()) {
+            this.log('warning', 'No custom text provided');
+            return;
+        }
+
+        this.log('info', 'Testing custom TTS text');
+        this.updateOutput('tts', `<div style="color: #f59e0b;">Synthesizing: "${customText}"</div>`);
+
+        try {
+            const audioUrl = await window.piCore.textToSpeech(customText);
+            const audio = new Audio(audioUrl);
+
+            await audio.play();
+
+            this.updateOutput('tts', `
+                <div style="color: #10b981;">
+                    ✅ Custom TTS Successful<br>
+                    📝 Text: "${customText}"<br>
+                    🎵 Audio played successfully
+                </div>
+            `);
+
+        } catch (error) {
+            this.log('error', `Custom TTS failed: ${error.message}`);
+            this.updateOutput('tts', `<div style="color: #ef4444;">❌ Custom TTS Error: ${error.message}</div>`);
+        }
+    }
+
+    async listVoices() {
+        this.log('info', 'Fetching available voices');
+        this.updateOutput('tts', '<div style="color: #f59e0b;">Fetching voice list...</div>');
+
+        // This would fetch from TTS service
+        this.updateOutput('tts', `
+            <div style="color: #3b82f6;">
+                📋 Available Voices:<br>
+                • Default (en-US neural)<br>
+                • More voices coming soon...
+            </div>
+        `);
+    }
+}
+
+// STT Module
+class STTModule extends BaseModule {
+    initialize() {
+        document.getElementById('sttRecordBtn').addEventListener('click', () => this.quickTest());
+        document.getElementById('sttContinuousBtn').addEventListener('click', () => this.startContinuous());
+        document.getElementById('sttStopBtn').addEventListener('click', () => this.stopContinuous());
+
+        // Settings
+        document.getElementById('sttSensitivity').addEventListener('input', (e) => {
+            document.getElementById('sttSensitivityValue').textContent = e.target.value;
+        });
+
+        this.continuousRecording = false;
+    }
+
+    activate() {
+        // Setup visualizer when module is activated
+        if (window.piCore.stream) {
+            window.piCore.setupAudioVisualizer('audioVisualizer', window.piCore.stream);
+        }
+    }
+
+    async quickTest() {
+        this.log('info', 'Starting STT 3-second test');
+        this.updateOutput('stt', '<div style="color: #f59e0b;">🎙️ Recording for 3 seconds...</div>');
+
+        try {
+            const audioBlob = await window.piCore.recordAudio(3000);
+            this.updateOutput('stt', '<div style="color: #f59e0b;">🔄 Processing audio...</div>');
+
+            const model = document.getElementById('sttModelSelect').value;
+            const text = await window.piCore.sendToSTT(audioBlob, model);
+
+            if (text) {
+                this.log('success', `STT recognized: "${text}"`);
+                this.updateOutput('stt', `
+                    <div style="color: #10b981;">
+                        ✅ STT Test Successful<br>
+                        📝 Recognized: "${text}"<br>
+                        🎯 Model: ${model}<br>
+                        📊 Audio size: ${(audioBlob.size / 1024).toFixed(1)}KB
+                    </div>
+                `);
+            } else {
+                this.log('warning', 'STT returned empty text');
+                this.updateOutput('stt', '<div style="color: #f59e0b;">⚠️ No speech detected</div>');
+            }
+
+        } catch (error) {
+            this.log('error', `STT test failed: ${error.message}`);
+            this.updateOutput('stt', `<div style="color: #ef4444;">❌ STT Error: ${error.message}</div>`);
+        }
+    }
+
+    async startContinuous() {
+        if (this.continuousRecording) return;
+
+        this.continuousRecording = true;
+        document.getElementById('sttContinuousBtn').disabled = true;
+        document.getElementById('sttStopBtn').disabled = false;
+
+        this.log('info', 'Starting continuous STT');
+        this.updateOutput('stt', '<div style="color: #10b981;">🔴 Continuous recording active...</div>');
+
+        // Setup audio visualization
+        try {
+            const stream = await window.piCore.getAudioStream();
+            window.piCore.setupAudioVisualizer('audioVisualizer', stream);
+        } catch (error) {
+            this.log('error', `Audio setup failed: ${error.message}`);
+        }
+
+        this.continuousLoop();
+    }
+
+    async continuousLoop() {
+        while (this.continuousRecording) {
+            try {
+                const audioBlob = await window.piCore.recordAudio(4000);
+                if (!this.continuousRecording) break;
+
+                const model = document.getElementById('sttModelSelect').value;
+                const text = await window.piCore.sendToSTT(audioBlob, model);
+
+                if (text && text.length > 0) {
+                    this.log('info', `Continuous STT: "${text}"`);
+                    this.updateOutput('stt', `
+                        <div style="color: #10b981;">
+                            🔴 Live Recognition<br>
+                            📝 Latest: "${text}"<br>
+                            ⏰ ${new Date().toLocaleTimeString()}
+                        </div>
+                    `);
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+            } catch (error) {
+                this.log('error', `Continuous STT error: ${error.message}`);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+    }
+
+    stopContinuous() {
+        this.continuousRecording = false;
+        document.getElementById('sttContinuousBtn').disabled = false;
+        document.getElementById('sttStopBtn').disabled = true;
+
+        this.log('info', 'Stopped continuous STT');
+        this.updateOutput('stt', '<div style="color: #6b7280;">⏸️ Continuous recording stopped</div>');
+    }
+}
+
+// Pipeline Module
+class PipelineModule extends BaseModule {
+    initialize() {
+        document.getElementById('pipelineTestBtn').addEventListener('click', () => this.fullPipelineTest());
+        document.getElementById('pipelineWakewordBtn').addEventListener('click', () => this.testWakeword());
+        document.getElementById('pipelineN8nBtn').addEventListener('click', () => this.testN8nIntegration());
+    }
+
+    async fullPipelineTest() {
+        this.log('info', 'Starting full pipeline test');
+        this.updateOutput('pipeline', '<div style="color: #f59e0b;">🔄 Step 1/3: Recording...</div>');
+
+        try {
+            // Step 1: Record
+            const audioBlob = await window.piCore.recordAudio(3000);
+
+            // Step 2: STT
+            this.updateOutput('pipeline', '<div style="color: #f59e0b;">🔄 Step 2/3: Speech to text...</div>');
+            const text = await window.piCore.sendToSTT(audioBlob);
+
+            if (!text) throw new Error('No speech detected');
+
+            // Step 3: TTS
+            this.updateOutput('pipeline', '<div style="color: #f59e0b;">🔄 Step 3/3: Text to speech...</div>');
+            const response = `You said: ${text}`;
+            const audioUrl = await window.piCore.textToSpeech(response);
+
+            const audio = new Audio(audioUrl);
+            await audio.play();
+
+            this.log('success', 'Full pipeline test completed');
+            this.updateOutput('pipeline', `
+                <div style="color: #10b981;">
+                    ✅ Pipeline Test Complete!<br>
+                    🎙️ Input: "${text}"<br>
+                    🔊 Output: "${response}"<br>
+                    ⏱️ Full cycle completed
+                </div>
+            `);
+
+        } catch (error) {
+            this.log('error', `Pipeline test failed: ${error.message}`);
+            this.updateOutput('pipeline', `<div style="color: #ef4444;">❌ Pipeline Error: ${error.message}</div>`);
+        }
+    }
+
+    async testWakeword() {
+        this.log('info', 'Testing wake word detection');
+        this.updateOutput('pipeline', '<div style="color: #3b82f6;">👋 Say "Hey Pi" or "Okay Pi"...</div>');
+
+        // This would implement wake word detection
+        setTimeout(() => {
+            this.updateOutput('pipeline', `
+                <div style="color: #10b981;">
+                    👋 Wake word test simulation<br>
+                    🎯 Listening for: "Hey Pi", "Okay Pi"<br>
+                    📝 Feature coming soon...
+                </div>
+            `);
+        }, 2000);
+    }
+
+    async testN8nIntegration() {
+        this.log('info', 'Testing n8n integration');
+        this.updateOutput('pipeline', '<div style="color: #f59e0b;">🤖 Testing n8n webhook...</div>');
+
+        try {
+            // This would test n8n webhook integration
+            const response = await fetch('/api/n8n/webhook/test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ test: 'debug-dashboard', timestamp: Date.now() })
+            });
+
+            if (response.ok) {
+                this.updateOutput('pipeline', `
+                    <div style="color: #10b981;">
+                        ✅ n8n Integration Active<br>
+                        🔗 Webhook responding<br>
+                        📊 Status: ${response.status}
+                    </div>
+                `);
+            } else {
+                throw new Error(`HTTP ${response.status}`);
+            }
+
+        } catch (error) {
+            this.log('warning', `n8n integration: ${error.message}`);
+            this.updateOutput('pipeline', `<div style="color: #f59e0b;">⚠️ n8n Integration: ${error.message}</div>`);
+        }
+    }
+}
+
+// System Module
+class SystemModule extends BaseModule {
+    initialize() {
+        document.getElementById('systemRefreshBtn').addEventListener('click', () => this.refresh());
+        document.getElementById('systemDockerBtn').addEventListener('click', () => this.dockerStatus());
+    }
+
+    async refresh() {
+        this.log('info', 'Refreshing system status');
+        await this.dashboard.checkServiceHealth();
+        this.updateOutput('system', `
+            <div style="color: #10b981;">
+                🔄 System status refreshed<br>
+                ⏰ ${new Date().toLocaleString()}<br>
+                📊 Check service badges in header
+            </div>
+        `);
+    }
+
+    async dockerStatus() {
+        this.log('info', 'Checking Docker containers');
+        this.updateOutput('system', `
+            <div style="color: #3b82f6;">
+                🐳 Docker Container Status<br>
+                📦 STT: faster-whisper-server<br>
+                📦 TTS: piper-tts<br>
+                📦 n8n: workflow automation<br>
+                🌐 nginx: reverse proxy<br>
+                <br>
+                <em>Detailed status via docker-compose logs</em>
+            </div>
+        `);
+    }
+}
+
+// Initialize Dashboard
 document.addEventListener('DOMContentLoaded', () => {
-    new VoiceAssistant();
+    window.debugDashboard = new DebugDashboard();
 });

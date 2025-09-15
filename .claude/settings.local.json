@@ -42,7 +42,10 @@
       "Bash(docker exec:*)",
       "Bash(docker cp:*)",
       "Bash(ffmpeg:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(wget:*)",
+      "Bash(WEB_PORT=8081 docker compose up -d)",
+      "Bash(docker ps:*)"
     ],
     "defaultMode": "acceptEdits"
   }

@@ -3,160 +3,509 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pi Voice Assistant</title>
+    <title>Pi Debug Dashboard</title>
     <style>
+        :root {
+            --primary: #667eea;
+            --secondary: #764ba2;
+            --success: #10b981;
+            --error: #ef4444;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --dark: #1f2937;
+            --light: #f9fafb;
+            --border: #e5e7eb;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            background: var(--dark);
+            color: #ffffff;
+            line-height: 1.6;
         }
-        #app {
-            background: white;
+
+        .dashboard {
+            display: grid;
+            grid-template-areas:
+                "header header"
+                "sidebar main"
+                "sidebar logs";
+            grid-template-columns: 300px 1fr;
+            grid-template-rows: auto 1fr 200px;
+            height: 100vh;
+            gap: 1rem;
+            padding: 1rem;
+        }
+
+        .dashboard-header {
+            grid-area: header;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .dashboard-header h1 {
+            color: white;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .system-status {
+            display: flex;
+            gap: 1rem;
+            margin-left: auto;
+        }
+
+        .status-badge {
+            padding: 0.5rem 1rem;
             border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        h1 {
-            color: #333;
-            margin: 0 0 10px 0;
-        }
-        .status {
-            display: inline-block;
-            padding: 8px 16px;
-            border-radius: 20px;
+            font-size: 0.875rem;
             font-weight: 600;
             transition: all 0.3s;
         }
-        .status-inactive {
-            background: #f3f4f6;
-            color: #6b7280;
+
+        .status-connected {
+            background: var(--success);
+            color: white;
         }
-        .status-listening {
-            background: #10b981;
+
+        .status-disconnected {
+            background: var(--error);
+            color: white;
+        }
+
+        .status-loading {
+            background: var(--warning);
             color: white;
             animation: pulse 2s infinite;
         }
+
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
         }
-        .control-panel {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin: 30px 0;
+
+        .dashboard-sidebar {
+            grid-area: sidebar;
+            background: #374151;
+            border-radius: 12px;
+            padding: 1.5rem;
+            overflow-y: auto;
         }
-        button {
-            padding: 12px 30px;
+
+        .feature-nav {
+            list-style: none;
+        }
+
+        .feature-nav li {
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-nav button {
+            width: 100%;
+            background: transparent;
+            border: 1px solid #4b5563;
+            color: #d1d5db;
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9rem;
+            text-align: left;
+        }
+
+        .feature-nav button:hover {
+            background: #4b5563;
+            border-color: var(--primary);
+        }
+
+        .feature-nav button.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+        }
+
+        .dashboard-main {
+            grid-area: main;
+            background: #374151;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .feature-module {
+            display: none;
+            height: 100%;
+        }
+
+        .feature-module.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .module-header {
+            background: #4b5563;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #6b7280;
+        }
+
+        .module-header h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .module-content {
+            flex: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
             border: none;
-            border-radius: 10px;
-            font-size: 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
-        .btn-primary {
-            background: #667eea;
-            color: white;
-        }
-        .btn-primary:hover:not(:disabled) {
-            background: #5a67d8;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-        .btn-secondary {
-            background: #ef4444;
-            color: white;
-        }
-        button:disabled {
+
+        .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-        #waveform {
-            width: 100%;
-            height: 150px;
-            background: #1a1a1a;
-            border-radius: 10px;
-            margin: 20px 0;
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
         }
-        #transcript {
-            background: #f9fafb;
-            padding: 20px;
-            border-radius: 10px;
-            min-height: 60px;
-            margin: 20px 0;
-            font-size: 18px;
-            line-height: 1.6;
+
+        .btn-primary:hover:not(:disabled) {
+            background: #5a67d8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
         }
-        .logs {
-            margin-top: 30px;
+
+        .btn-success {
+            background: var(--success);
+            color: white;
         }
-        #log {
-            background: #1f2937;
-            color: #10b981;
-            padding: 15px;
-            border-radius: 10px;
+
+        .btn-success:hover:not(:disabled) {
+            background: #059669;
+        }
+
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background: #dc2626;
+        }
+
+        .test-output {
+            background: var(--dark);
+            border: 1px solid #4b5563;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+            min-height: 120px;
             font-family: 'Courier New', monospace;
-            font-size: 12px;
-            max-height: 200px;
+            font-size: 0.875rem;
             overflow-y: auto;
         }
-        .settings {
-            background: #f3f4f6;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 20px 0;
+
+        .settings-panel {
+            background: #4b5563;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
         }
-        label {
+
+        .setting-group {
+            margin-bottom: 1rem;
+        }
+
+        .setting-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #d1d5db;
+        }
+
+        .setting-group input,
+        .setting-group select {
+            width: 100%;
+            background: var(--dark);
+            border: 1px solid #6b7280;
+            border-radius: 6px;
+            padding: 0.5rem;
+            color: white;
+            font-size: 0.875rem;
+        }
+
+        .setting-group input:focus,
+        .setting-group select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .logs-panel {
+            grid-area: logs;
+            background: var(--dark);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid #4b5563;
+        }
+
+        .logs-header {
             display: flex;
+            justify-content: between;
             align-items: center;
-            gap: 10px;
+            margin-bottom: 1rem;
         }
-        input[type="range"] {
-            flex: 1;
+
+        .logs-header h3 {
+            color: var(--success);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .clear-logs {
+            background: transparent;
+            border: 1px solid #4b5563;
+            color: #9ca3af;
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .clear-logs:hover {
+            background: #4b5563;
+        }
+
+        .logs-content {
+            background: #111827;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            padding: 1rem;
+            height: calc(100% - 60px);
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            margin-bottom: 0.25rem;
+            padding: 0.25rem 0;
+        }
+
+        .log-error {
+            color: var(--error);
+        }
+
+        .log-success {
+            color: var(--success);
+        }
+
+        .log-warning {
+            color: var(--warning);
+        }
+
+        .log-info {
+            color: var(--info);
+        }
+
+        .audio-visualizer {
+            width: 100%;
+            height: 80px;
+            background: #111827;
+            border: 1px solid #374151;
+            border-radius: 8px;
+            margin: 1rem 0;
         }
     </style>
 </head>
 <body>
-    <div id="app">
-        <header>
-            <h1>🎙️ Pi Voice Assistant</h1>
-            <div id="status" class="status status-inactive">Inactive</div>
-        </header>
-        
-        <main>
-            <div class="control-panel">
-                <button id="startBtn" class="btn-primary">Start Listening</button>
-                <button id="stopBtn" class="btn-secondary" disabled>Stop</button>
+    <div class="dashboard">
+        <!-- Header -->
+        <div class="dashboard-header">
+            <h1>🔧 Pi Debug Dashboard</h1>
+            <div class="system-status">
+                <div id="sttStatus" class="status-badge status-loading">STT Loading...</div>
+                <div id="ttsStatus" class="status-badge status-loading">TTS Loading...</div>
+                <div id="n8nStatus" class="status-badge status-loading">n8n Loading...</div>
             </div>
-            
-            <div class="visualization">
-                <canvas id="waveform"></canvas>
-                <div id="transcript">Ready to listen... Click "Start Listening" to begin.</div>
+        </div>
+
+        <!-- Sidebar Navigation -->
+        <div class="dashboard-sidebar">
+            <h3 style="color: #d1d5db; margin-bottom: 1rem; font-size: 1rem;">🧪 Test Modules</h3>
+            <ul class="feature-nav">
+                <li><button data-module="overview" class="active">📊 Overview</button></li>
+                <li><button data-module="tts">🔊 Text-to-Speech</button></li>
+                <li><button data-module="stt">🎤 Speech-to-Text</button></li>
+                <li><button data-module="pipeline">🔄 Full Pipeline</button></li>
+                <li><button data-module="system">⚙️ System Monitor</button></li>
+            </ul>
+        </div>
+
+        <!-- Main Content Area -->
+        <div class="dashboard-main">
+            <!-- Overview Module -->
+            <div id="overview-module" class="feature-module active">
+                <div class="module-header">
+                    <h2>📊 System Overview</h2>
+                </div>
+                <div class="module-content">
+                    <div class="test-controls">
+                        <button id="testAllBtn" class="btn btn-primary">🚀 Test All Services</button>
+                        <button id="healthCheckBtn" class="btn btn-success">❤️ Health Check</button>
+                    </div>
+                    <div class="test-output" id="overviewOutput">
+                        <div style="color: #9ca3af;">Click "Health Check" to verify all services are running...</div>
+                    </div>
+                </div>
             </div>
-            
-            <div class="settings">
-                <label>
-                    Wake Word Sensitivity:
-                    <input type="range" id="sensitivity" min="0" max="1" step="0.1" value="0.5">
-                    <span id="sensitivityValue">0.5</span>
-                </label>
+
+            <!-- TTS Module -->
+            <div id="tts-module" class="feature-module">
+                <div class="module-header">
+                    <h2>🔊 Text-to-Speech Testing</h2>
+                </div>
+                <div class="module-content">
+                    <div class="test-controls">
+                        <button id="ttsTestBtn" class="btn btn-primary">🎵 Quick Test</button>
+                        <button id="ttsCustomBtn" class="btn btn-success">✏️ Custom Text</button>
+                        <button id="ttsVoicesBtn" class="btn btn-info">🎭 List Voices</button>
+                    </div>
+                    <div class="settings-panel">
+                        <div class="setting-group">
+                            <label>Voice Model:</label>
+                            <select id="ttsVoiceSelect">
+                                <option value="default">Default Voice</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label>Speed:</label>
+                            <input type="range" id="ttsSpeed" min="0.5" max="2" step="0.1" value="1">
+                            <span id="ttsSpeedValue">1.0x</span>
+                        </div>
+                        <div class="setting-group">
+                            <label>Custom Text:</label>
+                            <input type="text" id="ttsCustomText" placeholder="Enter text to synthesize..." value="Hello from the Pi voice assistant debug dashboard!">
+                        </div>
+                    </div>
+                    <div class="test-output" id="ttsOutput">
+                        <div style="color: #9ca3af;">Click a test button to begin TTS testing...</div>
+                    </div>
+                </div>
             </div>
-            
-            <div class="logs">
-                <h3>Activity Log</h3>
-                <pre id="log">System ready...</pre>
+
+            <!-- STT Module -->
+            <div id="stt-module" class="feature-module">
+                <div class="module-header">
+                    <h2>🎤 Speech-to-Text Testing</h2>
+                </div>
+                <div class="module-content">
+                    <div class="test-controls">
+                        <button id="sttRecordBtn" class="btn btn-primary">🎙️ Record 3s</button>
+                        <button id="sttContinuousBtn" class="btn btn-success">🔄 Continuous</button>
+                        <button id="sttStopBtn" class="btn btn-danger" disabled>⏹️ Stop</button>
+                    </div>
+                    <canvas id="audioVisualizer" class="audio-visualizer"></canvas>
+                    <div class="settings-panel">
+                        <div class="setting-group">
+                            <label>Model:</label>
+                            <select id="sttModelSelect">
+                                <option value="small.en">Small English</option>
+                                <option value="medium.en">Medium English</option>
+                                <option value="large">Large Multilingual</option>
+                            </select>
+                        </div>
+                        <div class="setting-group">
+                            <label>Sensitivity:</label>
+                            <input type="range" id="sttSensitivity" min="0" max="1" step="0.1" value="0.5">
+                            <span id="sttSensitivityValue">0.5</span>
+                        </div>
+                    </div>
+                    <div class="test-output" id="sttOutput">
+                        <div style="color: #9ca3af;">Click "Record 3s" to test speech recognition...</div>
+                    </div>
+                </div>
             </div>
-        </main>
+
+            <!-- Pipeline Module -->
+            <div id="pipeline-module" class="feature-module">
+                <div class="module-header">
+                    <h2>🔄 Full Pipeline Testing</h2>
+                </div>
+                <div class="module-content">
+                    <div class="test-controls">
+                        <button id="pipelineTestBtn" class="btn btn-primary">🔄 Record → STT → TTS</button>
+                        <button id="pipelineWakewordBtn" class="btn btn-success">👋 Test Wake Word</button>
+                        <button id="pipelineN8nBtn" class="btn btn-info">🤖 Test n8n Integration</button>
+                    </div>
+                    <div class="test-output" id="pipelineOutput">
+                        <div style="color: #9ca3af;">Test the complete voice assistant pipeline...</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Monitor Module -->
+            <div id="system-module" class="feature-module">
+                <div class="module-header">
+                    <h2>⚙️ System Monitor</h2>
+                </div>
+                <div class="module-content">
+                    <div class="test-controls">
+                        <button id="systemRefreshBtn" class="btn btn-primary">🔄 Refresh</button>
+                        <button id="systemDockerBtn" class="btn btn-info">🐳 Docker Status</button>
+                    </div>
+                    <div class="test-output" id="systemOutput">
+                        <div style="color: #9ca3af;">System monitoring information will appear here...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Logs Panel -->
+        <div class="logs-panel">
+            <div class="logs-header">
+                <h3>📝 Activity Logs</h3>
+                <button class="clear-logs" onclick="window.debugDashboard?.clearLogs()">Clear</button>
+            </div>
+            <div class="logs-content" id="debugLogs">
+                <div class="log-entry log-info">[System] Debug dashboard initialized...</div>
+            </div>
+        </div>
     </div>
-    
+
     <script src="app.js" type="module"></script>
 </body>
 </html>

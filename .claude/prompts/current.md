@@ -1,13 +1,43 @@
 
+in our test html page http://localhost:8080/ we have like everything in the same place really all mixed in. I want to change this test interface so that
+  it can be the debugging ux/ui of our app one feature at time.
+I want things to be uc/ui styled nicely but most importantly to have a dev oriented view of being able to see things from the feature code wise and result.
+
+So I want the page first to be like a dashboard of things we want to test / debug / monitor / etc.
+
+We want to make things encaspulated for the ux/ui but for the feature itself it needs to be avalaible everywhere as native function or the way we use it should be like that because our architecture already let us use things like this. this should be the ideal, if not transform it into that.
+
+Ok so the new test zone will be a dashboard of feature we want to test.
+- TTS
+- STT
+
+Things need to be scalable because we will add new feature all the time and we want to be able to test them all in one place.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 docs\HANDOVER.md
 ITERATION_PLAN.md
 MAIN_PLAN.md
 next_iteration.md
 
 
-Everything is ready and looking fine. 
-So lets go on and start our main plan toward our app. 
-Do not forget our goal and our main concept. 
+Everything is ready and looking fine.
+So lets go on and start our main plan toward our app.
+Do not forget our goal and our main concept.
 
 Still keep in mind that
 - We need to always follow best practice in term of coding like DRY, reusable component and make everything clean, not too complex and perflecty balanced
@@ -15,7 +45,7 @@ Still keep in mind that
 Again do not hesitate in the middle of the execution based on your finding to challenge and revisit the inital plan and redo a planning phase, it is important that your plan go along you coding execution and your discovery.
 We are in 2025, this project need to be up to date with current library. Do not forget that your training dataset is limited and you have a cutting date so make sure to use the browsing tools to double check your assumptions.
 
-As now you know you can run cli command yourself. 
+As now you know you can run cli command yourself.
 
 Lets go and iterate for the first step. Do not try to be overconfident and complete the whole project at once.
 Really go on a validate everything and based on the ending of each iteration dont hesite to question your plan, add step or whatever depending on your findings.
@@ -44,7 +74,7 @@ You are also running in this environment, but not in the docker container, you l
 The first thing you need to do right now is to understand our project goal / focus and objective.
 Read the project file.
 Then you will need to setup yourself as the primary developer for this project and update the CLAUDE.md.
-Read / browse documentation 
+Read / browse documentation
 - https://www.anthropic.com/engineering/claude-code-best-practices
 - https://www.reddit.com/r/ClaudeAI/comments/1k5slll/anthropics_guide_to_claude_code_best_practices/?rdt=57963
 - https://dev.to/yigit-konur/the-ultimate-guide-to-claudemd-best-practices-to-turn-claude-into-super-powered-ai-teammate-529p
