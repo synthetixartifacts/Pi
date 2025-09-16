@@ -77,8 +77,8 @@ services:
       dockerfile: Dockerfile
       platforms:
         - linux/amd64
-        - linux/arm64
     container_name: pi-tts
+    platform: linux/amd64
     restart: unless-stopped
     ports:
       - "${TTS_PORT:-5000}:5000"

@@ -45,7 +45,8 @@
       "Bash(tree:*)",
       "Bash(wget:*)",
       "Bash(WEB_PORT=8081 docker compose up -d)",
-      "Bash(docker ps:*)"
+      "Bash(docker ps:*)",
+      "Bash(./start.sh:*)"
     ],
     "defaultMode": "acceptEdits"
   }

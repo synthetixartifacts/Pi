@@ -15,30 +15,80 @@ A fully containerized voice assistant with wake word detection, speech-to-text, 
 
 ### Prerequisites
 
-- Windows 10/11 with WSL2 enabled
 - Docker Desktop installed and running
 - Modern web browser (Chrome/Edge recommended)
 - Git
 
-### Installation
+### 🚀 Universal Quick Start (All Platforms)
 
-1. Clone the repository:
 ```bash
+# Clone the repository
 git clone <repository-url>
 cd Pi
+
+# Run the universal start script
+./start.sh          # macOS/Linux/Pi
+# or
+start.bat           # Windows
 ```
 
-2. Copy environment template:
+That's it! The script auto-detects your platform and configures everything.
+
+### What the Universal Script Does
+
+1. **Auto-detects your platform** (macOS, Windows WSL, Raspberry Pi, Linux)
+2. **Checks/starts Docker** automatically
+3. **Creates or updates .env** with platform-specific settings
+4. **Selects the right docker-compose file** for your platform
+5. **Starts all services** and waits for them to be healthy
+6. **Opens your browser** to the Web UI
+
+### Platform-Specific Details (If Needed)
+
+<details>
+<summary>macOS (including Apple Silicon)</summary>
+
 ```bash
-cp .env.example .env
+# The universal script automatically:
+# - Detects Intel vs Apple Silicon
+# - Uses docker-compose.mac.yml
+# - Sets Rosetta emulation for M1/M2/M3
+
+# Or use platform-specific script:
+./start/start_mac.sh
 ```
+</details>
 
-3. Edit `.env` file and customize settings (especially passwords)
+<details>
+<summary>Windows</summary>
 
-4. Start all services:
 ```bash
-docker compose up -d
+# From Command Prompt or PowerShell:
+start.bat
+
+# From WSL2:
+./start.sh
+
+# Or use platform-specific script:
+./start/start_windows.sh  # WSL
+start\start_windows.bat    # CMD
 ```
+</details>
+
+<details>
+<summary>Raspberry Pi 5</summary>
+
+```bash
+# The universal script automatically:
+# - Detects Pi model
+# - Uses docker-compose.pi.yml
+# - Sets lower resource limits
+# - Uses tiny.en Whisper model
+
+# Or use platform-specific script:
+./start/start_pi.sh
+```
+</details>
 
 5. Wait for services to initialize (check logs):
 ```bash

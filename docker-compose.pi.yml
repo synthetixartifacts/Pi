@@ -1,3 +1,4 @@
+# Optimized for Raspberry Pi 5
 x-common-variables: &common-variables
   TZ: ${GENERIC_TIMEZONE:-America/Toronto}
   
@@ -5,14 +6,13 @@ x-resource-limits: &resource-limits
   deploy:
     resources:
       limits:
-        cpus: ${CPU_LIMIT:-4}
-        memory: ${MEMORY_LIMIT:-4g}
+        cpus: ${CPU_LIMIT:-2}
+        memory: ${MEMORY_LIMIT:-2g}
 
 services:
   n8n:
     image: n8nio/n8n:1.110.1
     container_name: pi-n8n
-    platform: linux/amd64
     restart: unless-stopped
     ports:
       - "${N8N_PORT:-5678}:5678"
@@ -39,7 +39,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 60s
     <<: *resource-limits
     networks:
       - pi-network
@@ -47,15 +47,14 @@ services:
   stt:
     image: fedirz/faster-whisper-server:latest-cpu
     container_name: pi-stt
-    platform: linux/amd64
     restart: unless-stopped
     ports:
       - "${STT_PORT:-8000}:8000"
     environment:
       <<: *common-variables
-      WHISPER__MODEL: Systran/faster-whisper-${WHISPER_MODEL:-small.en}
-      WHISPER__INFERENCE_DEVICE: ${WHISPER_DEVICE:-cpu}
-      WHISPER__COMPUTE_TYPE: ${WHISPER_COMPUTE_TYPE:-int8}
+      WHISPER__MODEL: Systran/faster-whisper-${WHISPER_MODEL:-tiny.en}
+      WHISPER__INFERENCE_DEVICE: cpu
+      WHISPER__COMPUTE_TYPE: int8
       UVICORN_HOST: 0.0.0.0
       UVICORN_PORT: 8000
     volumes:
@@ -66,7 +65,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 90s
     <<: *resource-limits
     networks:
       - pi-network
@@ -74,10 +73,7 @@ services:
   tts:
     build:
       context: ./services/tts
-      dockerfile: Dockerfile
-      platforms:
-        - linux/amd64
-        - linux/arm64
+      dockerfile: Dockerfile.pi
     container_name: pi-tts
     restart: unless-stopped
     ports:
@@ -93,7 +89,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 45s
     <<: *resource-limits
     networks:
       - pi-network
@@ -101,7 +97,6 @@ services:
   web:
     image: nginx:1.25-alpine
     container_name: pi-web
-    platform: linux/amd64
     restart: unless-stopped
     ports:
       - "${WEB_PORT:-8080}:80"
