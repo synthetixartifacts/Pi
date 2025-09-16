@@ -19,7 +19,7 @@ echo -e "${BLUE}"
 cat << "EOF"
 ╔════════════════════════════════════════════╗
 ║        Pi Voice Assistant - Universal      ║
-║           Auto-Detecting Platform...        ║
+║           Auto-Detecting Platform...       ║
 ╚════════════════════════════════════════════╝
 EOF
 echo -e "${NC}"
@@ -27,7 +27,7 @@ echo -e "${NC}"
 # Platform detection function
 detect_platform() {
     local platform=""
-    
+
     # Check for Raspberry Pi first
     if [[ -f /proc/device-tree/model ]] && grep -q "Raspberry Pi" /proc/device-tree/model 2>/dev/null; then
         platform="pi"
@@ -56,19 +56,19 @@ detect_platform() {
         platform="unknown"
         echo -e "${RED}❓ Unknown platform: $OSTYPE${NC}" >&2
     fi
-    
+
     echo "$platform"
 }
 
 # Docker check function
 check_docker() {
     local platform=$1
-    
+
     echo -e "${YELLOW}🔍 Checking Docker...${NC}"
-    
+
     if ! docker info > /dev/null 2>&1; then
         echo -e "${RED}❌ Docker is not running!${NC}"
-        
+
         case $platform in
             mac)
                 echo -e "${YELLOW}Attempting to start Docker Desktop...${NC}"
@@ -102,14 +102,14 @@ check_docker() {
                 fi
                 ;;
         esac
-        
+
         # Final check
         if ! docker info > /dev/null 2>&1; then
             echo -e "${RED}Docker still not running. Please start it manually.${NC}"
             exit 1
         fi
     fi
-    
+
     echo -e "${GREEN}✅ Docker is running${NC}"
 }
 
@@ -118,16 +118,16 @@ setup_env() {
     local platform=$1
     local env_exists=false
     local env_backup=""
-    
+
     if [ -f .env ]; then
         env_exists=true
         echo -e "${BLUE}📄 Found existing .env file${NC}"
-        
+
         # Check if PLATFORM is already set
         if grep -q "^PLATFORM=" .env; then
             CURRENT_PLATFORM=$(grep "^PLATFORM=" .env | cut -d'=' -f2)
             echo -e "${BLUE}   Current PLATFORM=$CURRENT_PLATFORM${NC}"
-            
+
             # Update platform if different
             if [ "$CURRENT_PLATFORM" != "$platform" ]; then
                 echo -e "${YELLOW}   Updating PLATFORM to $platform${NC}"
@@ -151,7 +151,7 @@ setup_env() {
         fi
     else
         echo -e "${YELLOW}📝 Creating .env file...${NC}"
-        
+
         # Set platform-specific defaults
         case $platform in
             pi)
@@ -170,10 +170,10 @@ setup_env() {
                 WHISPER_MODEL="small.en"
                 ;;
         esac
-        
+
         # Generate secure encryption key
         ENCRYPTION_KEY=$(openssl rand -hex 32 2>/dev/null || echo "n8n-encryption-key-min-32-chars-change-me")
-        
+
         cat > .env << ENV_FILE
 # Platform Configuration
 PLATFORM=$platform
@@ -203,7 +203,7 @@ WHISPER_COMPUTE_TYPE=int8
 PIPER_VOICE=en_US-amy-medium
 PIPER_SPEAKER=0
 ENV_FILE
-        
+
         echo -e "${GREEN}✅ .env file created with $platform defaults${NC}"
     fi
 }
@@ -211,7 +211,7 @@ ENV_FILE
 # Compose file selection function
 get_compose_file() {
     local platform=$1
-    
+
     case $platform in
         mac)
             echo "docker-compose.mac.yml"
@@ -234,7 +234,7 @@ check_service() {
     local url=$2
     local max_attempts=30
     local attempt=1
-    
+
     echo -n "  Checking $service"
     while [ $attempt -le $max_attempts ]; do
         if curl -s -f "$url" > /dev/null 2>&1; then
@@ -245,7 +245,7 @@ check_service() {
         sleep 2
         attempt=$((attempt + 1))
     done
-    
+
     echo -e " ${RED}❌${NC}"
     return 1
 }
@@ -254,24 +254,24 @@ check_service() {
 main() {
     # Detect platform
     PLATFORM=$(detect_platform)
-    
+
     if [ "$PLATFORM" == "unknown" ]; then
         echo -e "${RED}Unable to detect platform. Please use platform-specific scripts in ./start/${NC}"
         exit 1
     fi
-    
+
     echo ""
-    
+
     # Check Docker
     check_docker "$PLATFORM"
-    
+
     echo ""
-    
+
     # Setup .env
     setup_env "$PLATFORM"
-    
+
     echo ""
-    
+
     # Create necessary directories
     echo -e "${YELLOW}📁 Creating directories...${NC}"
     mkdir -p services/n8n/files
@@ -279,23 +279,23 @@ main() {
     mkdir -p services/tts/voices
     mkdir -p web
     echo -e "${GREEN}✅ Directories ready${NC}"
-    
+
     echo ""
-    
+
     # Get appropriate compose file
     COMPOSE_FILE=$(get_compose_file "$PLATFORM")
     echo -e "${BLUE}📄 Using compose file: $COMPOSE_FILE${NC}"
-    
+
     # Stop existing containers
     echo -e "${YELLOW}🛑 Stopping existing containers...${NC}"
     docker compose -f "$COMPOSE_FILE" down 2>/dev/null || true
-    
+
     echo ""
-    
+
     # Pull images
     echo -e "${YELLOW}📦 Pulling Docker images...${NC}"
     docker compose -f "$COMPOSE_FILE" pull
-    
+
     # Build if needed (especially for TTS on Pi)
     if [ "$PLATFORM" == "pi" ] && [ -f "services/tts/Dockerfile.pi" ]; then
         echo -e "${YELLOW}🔨 Building TTS for ARM64...${NC}"
@@ -304,35 +304,35 @@ main() {
         echo -e "${YELLOW}🔨 Building TTS service...${NC}"
         docker compose -f "$COMPOSE_FILE" build tts
     fi
-    
+
     echo ""
-    
+
     # Start services
     echo -e "${YELLOW}🚀 Starting services...${NC}"
     docker compose -f "$COMPOSE_FILE" up -d
-    
+
     echo ""
-    
+
     # Wait for services
     echo -e "${YELLOW}⏳ Waiting for services to be healthy...${NC}"
     sleep 5
-    
+
     # Check services
     echo -e "${YELLOW}Checking services:${NC}"
     check_service "n8n" "http://localhost:5678/healthz"
     check_service "STT" "http://localhost:8000/health"
     check_service "TTS" "http://localhost:5000/health"
     check_service "Web" "http://localhost:8080"
-    
+
     echo ""
-    
+
     # Get IP for network access
     if [ "$PLATFORM" == "pi" ]; then
         IP=$(hostname -I | cut -d' ' -f1)
     else
         IP="localhost"
     fi
-    
+
     # Display success message
     echo -e "${GREEN}═══════════════════════════════════════${NC}"
     echo -e "${GREEN}     🎉 Pi Voice Assistant Ready!      ${NC}"
@@ -352,7 +352,7 @@ main() {
     echo -e "  Stop:       ${BLUE}docker compose -f $COMPOSE_FILE down${NC}"
     echo -e "  Restart:    ${BLUE}./start.sh${NC}"
     echo ""
-    
+
     # Try to open browser
     echo -e "${YELLOW}Opening Web UI in browser...${NC}"
     case $PLATFORM in
@@ -374,7 +374,7 @@ main() {
             fi
             ;;
     esac
-    
+
     echo ""
     echo -e "${GREEN}Ready to use! Say 'Hey Pi' to activate.${NC}"
 }

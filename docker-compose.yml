@@ -75,9 +75,6 @@ services:
     build:
       context: ./services/tts
       dockerfile: Dockerfile
-      platforms:
-        - linux/amd64
-        - linux/arm64
     container_name: pi-tts
     restart: unless-stopped
     ports:

@@ -1,254 +1,67 @@
-# Pi Voice Assistant POC
+# Pi Voice Assistant - Quick Start
 
-A fully containerized voice assistant with wake word detection, speech-to-text, text-to-speech, and n8n automation workflows. Initially designed for Windows/WSL2 Docker environment, deployable to Raspberry Pi 5.
-
-## Features
-
-- 🎙️ **Wake Word Detection** - "Hey Pi" activation using browser-based detection
-- 🗣️ **Speech-to-Text** - OpenAI Whisper for accurate transcription  
-- 🔊 **Text-to-Speech** - Piper neural TTS for natural voice synthesis
-- 🔄 **Workflow Automation** - n8n for orchestrating complex actions
-- 📷 **Vision Capabilities** - Optional camera integration for object detection
-- 🐳 **Fully Containerized** - Everything runs in Docker for easy deployment
-
-## Quick Start
-
-### Prerequisites
-
-- Docker Desktop installed and running
-- Modern web browser (Chrome/Edge recommended)
-- Git
-
-### 🚀 Universal Quick Start (All Platforms)
+## 🚀 One-Command Start
 
 ```bash
-# Clone the repository
-git clone <repository-url>
-cd Pi
-
-# Run the universal start script
-./start.sh          # macOS/Linux/Pi
-# or
-start.bat           # Windows
-```
-
-That's it! The script auto-detects your platform and configures everything.
-
-### What the Universal Script Does
-
-1. **Auto-detects your platform** (macOS, Windows WSL, Raspberry Pi, Linux)
-2. **Checks/starts Docker** automatically
-3. **Creates or updates .env** with platform-specific settings
-4. **Selects the right docker-compose file** for your platform
-5. **Starts all services** and waits for them to be healthy
-6. **Opens your browser** to the Web UI
-
-### Platform-Specific Details (If Needed)
-
-<details>
-<summary>macOS (including Apple Silicon)</summary>
-
-```bash
-# The universal script automatically:
-# - Detects Intel vs Apple Silicon
-# - Uses docker-compose.mac.yml
-# - Sets Rosetta emulation for M1/M2/M3
-
-# Or use platform-specific script:
-./start/start_mac.sh
-```
-</details>
-
-<details>
-<summary>Windows</summary>
-
-```bash
-# From Command Prompt or PowerShell:
-start.bat
-
-# From WSL2:
 ./start.sh
-
-# Or use platform-specific script:
-./start/start_windows.sh  # WSL
-start\start_windows.bat    # CMD
-```
-</details>
-
-<details>
-<summary>Raspberry Pi 5</summary>
-
-```bash
-# The universal script automatically:
-# - Detects Pi model
-# - Uses docker-compose.pi.yml
-# - Sets lower resource limits
-# - Uses tiny.en Whisper model
-
-# Or use platform-specific script:
-./start/start_pi.sh
-```
-</details>
-
-5. Wait for services to initialize (check logs):
-```bash
-docker compose logs -f
 ```
 
-6. Access the services:
+That's it! The script auto-detects your platform (WSL2/Mac/Linux/Pi) and configures everything.
+
+## What You Get
+
+- 🎙️ **Wake Word** - "Hey Pi" activation
+- 🗣️ **Speech-to-Text** - Whisper transcription
+- 🔊 **Text-to-Speech** - Piper neural voice
+- 🔄 **Automation** - n8n workflows
+- 🌐 **Web UI** - Browser-based interface
+
+## Access Points
+
+After startup, access:
 - **Web UI**: http://localhost:8080
 - **n8n**: http://localhost:5678 (admin/changeme123)
-- **STT API**: http://localhost:8000/docs
-- **TTS API**: http://localhost:5000/health
+- **STT API**: http://localhost:8000
+- **TTS API**: http://localhost:5000
 
-## Usage
+## Prerequisites
 
-1. Open the Web UI at http://localhost:8080
-2. Click "Start Listening" to begin
-3. Say "Hey Pi" to activate
-4. Speak your command
-5. The assistant will process and respond
+- Docker Desktop installed and running
+- Modern web browser
+- WSL2 (if on Windows)
+
+## Troubleshooting
+
+If `./start.sh` fails with "bad interpreter":
+```bash
+sed -i 's/\r$//' start.sh
+chmod +x start.sh
+./start.sh
+```
+
+## Commands
+
+```bash
+# View logs
+docker compose logs -f
+
+# Stop services
+docker compose down
+
+# Restart
+./start.sh
+```
 
 ## Project Structure
 
 ```
 Pi/
-├── docker-compose.yml      # Main orchestration
-├── .env                   # Environment configuration
-├── services/              # Service-specific files
-│   ├── n8n/              # Workflow automation
-│   ├── stt/              # Speech-to-text
-│   └── tts/              # Text-to-speech
-├── web/                   # Browser UI
-│   ├── index.html        # Main application
-│   └── app.js            # Core JavaScript
-├── tests/                 # Test files and utilities
-│   ├── data/             # Test data files
-│   │   ├── audio/        # Audio samples (.wav, .webm)
-│   │   └── samples/      # Other test samples
-│   ├── tools/            # Test utilities & debugging
-│   │   ├── index.html    # Test tools directory
-│   │   ├── mic_test.html # Basic microphone test
-│   │   ├── mic_test_fixed.html # Enhanced mic diagnostics
-│   │   ├── debug.html    # Debug dashboard
-│   │   ├── debug.js      # Dashboard JavaScript
-│   │   └── test_record.html # Audio recorder
-│   ├── integration/      # Integration tests
-│   └── unit/             # Unit tests
-├── docs/                  # Documentation
-├── CLAUDE.md             # AI assistant context
-└── MAIN_PLAN.md          # Implementation plan
+├── docker-compose.yml   # Main orchestration
+├── start.sh            # Auto-detect & start script
+├── services/           # Service configs
+│   ├── n8n/
+│   ├── stt/
+│   └── tts/
+├── web/               # Browser UI
+└── README.md          # This file
 ```
-
-## Service Health Check
-
-Run the health check script:
-```bash
-./scripts/test-services.sh
-```
-
-Or manually check each service:
-```bash
-# Check n8n
-curl http://localhost:5678/healthz
-
-# Check STT
-curl http://localhost:8000/health
-
-# Check TTS  
-curl http://localhost:5000/health
-
-# Check Web UI
-curl http://localhost:8080
-```
-
-## Troubleshooting
-
-### Services not starting
-- Check Docker Desktop is running
-- Verify ports are not in use: `netstat -an | grep LISTEN`
-- Check logs: `docker compose logs [service-name]`
-
-### Audio not working
-- Ensure browser has microphone permissions
-- Check browser console for errors (F12)
-- Verify STT/TTS services are healthy
-
-### n8n connection refused
-- Wait for n8n to fully initialize (can take 30-60 seconds)
-- Check credentials in `.env` file
-- Verify port 5678 is not blocked
-
-## Development
-
-### Adding new workflows
-1. Access n8n at http://localhost:5678
-2. Create new workflow
-3. Use webhook trigger for voice commands
-4. Export and save to `services/n8n/workflows/`
-
-### Modifying services
-- Edit service files in `services/` directory
-- Rebuild if needed: `docker compose build [service]`
-- Restart service: `docker compose restart [service]`
-
-### Testing
-
-#### Test Tools
-Access the test tools dashboard at http://localhost:8080/tests/tools/
-
-Available tools:
-- **Microphone Test**: Basic and enhanced microphone diagnostics
-- **Debug Dashboard**: Monitor all services and system status
-- **Audio Recorder**: Create test audio samples
-
-#### Test Data
-Pre-recorded audio samples are available in `tests/data/audio/`:
-- `test.wav` - Basic audio test file
-- `test_speech.wav` - Speech sample for STT testing
-- `test_noise.webm` - Background noise sample
-- `test_response.wav` - TTS response sample
-
-#### API Testing
-```bash
-# Test STT with sample file
-curl -X POST http://localhost:8000/v1/audio/transcriptions \
-  -F "audio=@tests/data/audio/test_speech.wav" \
-  -F "model=small.en"
-
-# Test TTS
-curl -X POST http://localhost:5000/api/tts \
-  -H "Content-Type: application/json" \
-  -d '{"text":"Hello from Docker"}' \
-  --output response.wav
-```
-
-## Deployment to Raspberry Pi
-
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for detailed Pi deployment instructions.
-
-Key differences:
-- Use ARM64 compatible images
-- Direct hardware audio access (no browser needed)
-- GPIO and camera ribbon support
-- Performance optimizations for Pi hardware
-
-## Contributing
-
-1. Follow the development workflow in CLAUDE.md
-2. Update MAIN_PLAN.md with progress
-3. Test thoroughly before committing
-4. Document any new features
-
-## License
-
-This is a proof of concept project for educational purposes.
-
-## Support
-
-- Check [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) for common issues
-- Review MAIN_PLAN.md for implementation details
-- Consult CLAUDE.md for development guidelines
-
----
-*Built with Docker, n8n, Whisper, and Piper*
